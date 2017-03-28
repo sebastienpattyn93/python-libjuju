@@ -113,18 +113,11 @@ class Connection:
 
         '''
 
-        # Skip using Pinger facade, as the version comes back as
-        # unrecognized, for some reason.
-        #pinger = client_facade.PingerFacade()
-        #pinger.connect(self)
+        pinger = client_facade.PingerFacade()
+        pinger.connect(self)
 
         while self.is_open:
-            #await pinger.Ping()
-            self.__request_id__ += 1
-            msg = {'type': 'Pinger', 'request': 'Ping', 'request-id': self.__request_id__}
-            await self.ws.send(json.dumps(msg))
-            await self.recv(msg['request-id'])
-
+            await pinger.Ping()
             await asyncio.sleep(10)
 
     async def rpc(self, msg, encoder=None):
