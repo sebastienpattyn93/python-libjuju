@@ -15,6 +15,7 @@ import asyncio
 import yaml
 
 from juju import tag
+#from juju.client import client as client_facade
 from juju.errors import JujuError, JujuAPIError, JujuConnectionError
 from juju.utils import IdQueue
 
@@ -77,6 +78,7 @@ class Connection:
         self.addr = url
         self.ws = await websockets.connect(url, **kw)
         self.loop.create_task(self.receiver())
+        self.loop.create_task(self.pinger())
         log.info("Driver connected to juju %s", url)
         return self
 
@@ -102,6 +104,28 @@ class Connection:
                     # but it may be for any pending message listeners
                     return
                 raise
+
+    async def pinger(self):
+        '''
+        Some controllers (the JaaS controllers, for example), will time us
+        out if we are idle too long. So we ping every 10 seconds to reset
+        the timeout.
+
+        '''
+
+        # Skip using Pinger facade, as the version comes back as
+        # unrecognized, for some reason.
+        #pinger = client_facade.PingerFacade()
+        #pinger.connect(self)
+
+        while self.is_open:
+            #await pinger.Ping()
+            self.__request_id__ += 1
+            msg = {'type': 'Pinger', 'request': 'Ping', 'request-id': self.__request_id__}
+            await self.ws.send(json.dumps(msg))
+            await self.recv(msg['request-id'])
+
+            await asyncio.sleep(10)
 
     async def rpc(self, msg, encoder=None):
         self.__request_id__ += 1
